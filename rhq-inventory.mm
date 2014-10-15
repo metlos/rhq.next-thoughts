@@ -4,8 +4,9 @@
 <node CREATED="1413391442137" ID="ID_648375660" MODIFIED="1413396951205" POSITION="right" TEXT="data identity">
 <node CREATED="1413392467172" ID="ID_1827262415" MODIFIED="1413393752118" TEXT="agents">
 <node CREATED="1413392486204" ID="ID_580071746" MODIFIED="1413393752118" TEXT="handle location change"/>
-<node CREATED="1413393227510" ID="ID_539615415" MODIFIED="1413394092009" TEXT="can we do without agents remembering their assigned identity">
-<icon BUILTIN="help"/>
+<node CREATED="1413393227510" ID="ID_539615415" MODIFIED="1413409789651" TEXT="need to do without agents remembering their assigned identity">
+<node CREATED="1413409793617" ID="ID_640939316" MODIFIED="1413409818995" TEXT="switches might not have the luxury of storing arbitrary string somewhere"/>
+<node CREATED="1413409821028" ID="ID_443398317" MODIFIED="1413409879563" TEXT="agents need to &quot;take over&quot; from older agents"/>
 </node>
 </node>
 <node CREATED="1413393076624" ID="ID_119332806" MODIFIED="1413396965798" TEXT="resource identity">
@@ -22,8 +23,7 @@
 <icon BUILTIN="help"/>
 </node>
 </node>
-<node CREATED="1413393200966" ID="ID_1501304944" MODIFIED="1413393752116" TEXT="change management">
-</node>
+<node CREATED="1413393200966" ID="ID_1501304944" MODIFIED="1413393752116" TEXT="change management"/>
 <node CREATED="1413392402285" ID="ID_1929293143" MODIFIED="1413397029100" TEXT="granularity">
 <node CREATED="1413392407637" ID="ID_435170340" MODIFIED="1413393752118" TEXT="support resource-less">
 <icon BUILTIN="help"/>
@@ -44,14 +44,18 @@
       This is important to support ad-hoc resources composed by the operators.
     </p>
   </body>
-</html>
-</richcontent>
-<linktarget COLOR="#b0b0b0" DESTINATION="ID_897639778" ENDARROW="Default" ENDINCLINATION="66;-19;" ID="Arrow_ID_433515925" SOURCE="ID_548198156" STARTARROW="None" STARTINCLINATION="210;-19;"/>
+</html></richcontent>
 <linktarget COLOR="#b0b0b0" DESTINATION="ID_897639778" ENDARROW="Default" ENDINCLINATION="115;-14;" ID="Arrow_ID_1629042408" SOURCE="ID_747267274" STARTARROW="None" STARTINCLINATION="152;0;"/>
+<linktarget COLOR="#b0b0b0" DESTINATION="ID_897639778" ENDARROW="Default" ENDINCLINATION="66;-19;" ID="Arrow_ID_433515925" SOURCE="ID_548198156" STARTARROW="None" STARTINCLINATION="210;-19;"/>
 <node CREATED="1413397411941" ID="ID_1253837988" MODIFIED="1413397449697" TEXT="does agent even understand resource">
 <icon BUILTIN="help"/>
 </node>
 </node>
+<node CREATED="1413409385407" ID="ID_1256469232" MODIFIED="1413409390683" TEXT="mapping">
+<node CREATED="1413409395527" ID="ID_1436832196" MODIFIED="1413409417037" TEXT="merge resources together"/>
+<node CREATED="1413409418199" ID="ID_806303047" MODIFIED="1413409430391" TEXT="split resources apart, sharing history"/>
+</node>
+<node CREATED="1413409471566" ID="ID_294766264" MODIFIED="1413409488992" TEXT="single attribute used by multiple resources"/>
 </node>
 </node>
 <node CREATED="1413391475502" ID="ID_520546585" MODIFIED="1413393752115" POSITION="left" STYLE="fork" TEXT="storage format">
@@ -71,8 +75,7 @@
 <node CREATED="1413391593637" ID="ID_1838700313" LINK="http://neo4j.com/subscriptions/" MODIFIED="1413393752113" TEXT="Neo4j">
 <node CREATED="1413391599157" ID="ID_859368479" MODIFIED="1413393752113" TEXT="licensing concerns">
 <icon BUILTIN="messagebox_warning"/>
-<node CREATED="1413391614773" ID="ID_1404769550" MODIFIED="1413394999449" TEXT="community GPL, enterprise AGPL or commercial">
-</node>
+<node CREATED="1413391614773" ID="ID_1404769550" MODIFIED="1413394999449" TEXT="community GPL, enterprise AGPL or commercial"/>
 </node>
 <node CREATED="1413391607661" ID="ID_1409579023" MODIFIED="1413393752112" TEXT="free version not clustered">
 <icon BUILTIN="button_cancel"/>
@@ -83,8 +86,7 @@
 <node CREATED="1413391646293" ID="ID_1472384069" MODIFIED="1413393752111" TEXT="ASL">
 <icon BUILTIN="button_ok"/>
 </node>
-<node CREATED="1413391652812" ID="ID_1610863139" MODIFIED="1413393752111" TEXT="Backed by Cassandra">
-</node>
+<node CREATED="1413391652812" ID="ID_1610863139" MODIFIED="1413393752111" TEXT="Backed by Cassandra"/>
 <node CREATED="1413394857590" ID="ID_316212524" LINK="https://github.com/thinkaurelius/titan/wiki/Rexster-Graph-Server" MODIFIED="1413394895068" TEXT="Rexter REST API + basic web UI">
 <icon BUILTIN="button_ok"/>
 </node>
@@ -104,7 +106,13 @@
 <node CREATED="1413394530641" ID="ID_242008290" MODIFIED="1413394560477" TEXT="aka ResourceTypes"/>
 <node CREATED="1413394562337" ID="ID_1526833134" MODIFIED="1413394590076" TEXT="Multiple inheritance"/>
 <node CREATED="1413394596416" ID="ID_1482818213" MODIFIED="1413394764740" STYLE="fork" TEXT="Evolving"/>
-<node CREATED="1413394609144" ID="ID_1419387789" MODIFIED="1413394616548" TEXT="Adhoc definition"/>
+<node CREATED="1413394609144" ID="ID_1419387789" MODIFIED="1413408267480" TEXT="Adhoc definition by user">
+<node CREATED="1413409545093" ID="ID_1301954760" MODIFIED="1413409581833" TEXT="Changing blueprint will require all its resources to conform">
+<node CREATED="1413409590485" ID="ID_465664832" MODIFIED="1413409607626" TEXT="new metric =&gt; all resources need to add one"/>
+<node CREATED="1413409614649" ID="ID_1845718977" MODIFIED="1413409656598" TEXT="time-boxed =&gt; the change applied from now on, old def still applicable to historical data"/>
+</node>
+<node CREATED="1413409702919" ID="ID_1026664034" MODIFIED="1413409709781" TEXT="&quot;create from resource&quot;"/>
+</node>
 <node CREATED="1413394617824" ID="ID_79246584" MODIFIED="1413394622692" TEXT="Defined by plugins"/>
 <node CREATED="1413394624505" ID="ID_1980964949" MODIFIED="1413394703125" TEXT="Can define &quot;vocabulary&quot; of relationships">
 <icon BUILTIN="help"/>
@@ -123,6 +131,7 @@
 <node CREATED="1413395195515" ID="ID_1095019157" MODIFIED="1413395211902" TEXT="node types">
 <node CREATED="1413395212667" ID="ID_33111389" MODIFIED="1413395215310" TEXT="blueprint"/>
 <node CREATED="1413395216283" ID="ID_1418120233" MODIFIED="1413395219150" TEXT="resource"/>
+<node CREATED="1413410081740" ID="ID_1997361144" MODIFIED="1413410088516" TEXT="group"/>
 <node CREATED="1413395230338" ID="ID_1221758787" MODIFIED="1413395234126" TEXT="deployment">
 <icon BUILTIN="help"/>
 </node>
@@ -134,7 +143,7 @@
 </node>
 </node>
 <node CREATED="1413395242179" ID="ID_1624217814" MODIFIED="1413395245126" TEXT="edge types">
-<node CREATED="1413395253386" ID="ID_1438268593" MODIFIED="1413395319054" TEXT="partOf (parent-child but also app membership)"/>
+<node CREATED="1413395253386" ID="ID_1438268593" MODIFIED="1413410101070" TEXT="partOf (parent-child but also app/group membership)"/>
 <node CREATED="1413395353633" ID="ID_384906422" MODIFIED="1413395379013" TEXT="definedBy (thing -&gt; blueprint)"/>
 </node>
 </node>
