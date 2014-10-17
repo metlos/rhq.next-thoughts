@@ -1,0 +1,133 @@
+<body>
+<p>I'll try to be at least semi-coherent in this reply where I'd like
+to expand on the ideas presented by Heiko.</p>
+
+<p>First of all, I base all my thoughts on the assumption that the
+inventory forms a graph (as suggested in Heiko's post, too). One
+additional requirement I'd add is that all the edges in the graph
+(i.e. relationshiops between nodes) are time-boxed (i.e they have
+additional properties apart from the name denoting the start and end
+of applicability of that relationship). This is to model the evolution
+of the infrastructure during the time.</p>
+<p/>
+<p>The following items should be stored in the graph as nodes:</p>
+<ul>
+<li>resource types</li>
+<li>resources (both agent-based and ad-hoc)</li>
+<li>groups (essentially these could be just ad-hoc resources)</li>
+<li>agents</li>
+<li>alert templates (can be understood as additional metadata on
+resource types or <b>groups</b>. These can be mere "pointers" to
+the rhq-alert with some logic associated as to what should
+happen with these pointers)</li>
+<li>metric templates (the same reasoning as for alert templates)
+</li>
+</ul>
+<p/>
+<h3>Identity of Data</h3>
+<p>Currently in RHQ, resources are the primary entities with identity.
+Identity of other incoming data like measurements, configurations, etc.
+are derived from the identity of the resource.
+</p>
+<p>As I outlined in
+<a href="https://docs.jboss.org/author/display/RHQ/Proposal+-+Poly-agent+RHQ">
+Poly-agent</a> proposal, I think that for us to enable agent-less
+monitoring (i.e. apps/scripts directly sending data), we need to be able
+to uniquely identify individual measurement kinds, configurations, etc.
+This is to a) not impose too much responsibility for RHQ-specific
+identification on the senders and b) be able to compose ad-hoc resources
+in the server from data coming from agents.
+</p>
+<p>Technically we would probably still use a "dummy" resource even for
+agents that do not understand the concept of multiple resources per
+agent so that <code>resourceAddress + datumID</code> becomes a unique
+identifier of a piece of data. The resource address would probably be
+a combination of <code>agentID + resourceAncestry</code> where ancestry
+is just a "path" of agent-local resource identifiers.
+</p>
+<p>This arangement would also enable us to consume data from other
+systems where the <code>agentID</code> would identify the other system
+and <code>resourceAncestry</code> and <code>datumID</code> would
+describe the "path" to the piece of data in that system. Maybe we could
+even encode the whole of that as an URI to not require multiple fields
+to identify the data (it's not yet clear to me how).
+</p>
+<p>Note in the above arrangement, the agent identifies the resource
+by resourceAncestry (which can be null if the agent doesn't understand
+resources at all) and the piece of data is identified by the datumID.
+The agent doesn't need to know its agentID which is good for the
+simplistic agents that we want to enable. In the simplest form then,
+the only identifier required from the agent is the datumID, i.e. it
+needs to say what is the "name" of the value it sends up.
+Note that I'm glossing over the authentication and authorization aspect
+of this problem at the momemnt which might bring additional requirements
+on the agents.
+</p>
+<p/>
+
+<h3>Identity Arbitration</h3>
+<p>What I think is quite important feature of the inventory is that
+it should function as a "identity arbiter" for resources and incoming
+data in general. When some piece of data comes in from some agent
+(a measurement let's say), the inventory needs to decide to what
+resources that measurement belongs and how to uniquely identify it
+within the whole system. Once the identity has been established, the
+measurement is then routed further to rhq-metrics or wherever its final
+destination is supposed to be.</p>
+<p>
+The reason for this is that I think we should not force the agents to
+either come up with or remember some server-assigned IDs for various
+things. Some agents might even not be able to remember such things - say
+if we process SNMP data, they have fixed identity (MIB) but may come
+from different agents/resources, hence should have their ID changed
+before being routed to rhq-metrics. This is quite a simple example but
+things might be more complex if we allowed for more "interesting"
+transformations of resources on the server side (resource split/merge).
+</p>
+<p>Note that if we change the agent-server topology from a star to a
+DAG, the translation could be done in one of the intermediary nodes
+between the originating agent and the server.
+<p/>
+
+<h3>Miscellaneous</h3>
+<p>Below are some additional random ideas that I think would make the 
+solution better than what we have now.</p>
+<p/>
+
+<p><b>Two inventories</b> - We have a history of self-manageablity with
+the RHQ server and RHQ resource as well as with the storage cluster
+management within RHQ. I think it would be good to formally admit this
+and have 2 separate inventories - 1 admin inventory which would provide
+the storage for self-manageablity and 1 "normal" inventory that would be
+used for managing the user's infrastructure.</p>
+
+<p><b>Resource Types</b>
+<ul>
+<li><i>Allow multiple inheritance</i> - so that we can truly compose new
+types out of more abstract ones.</li>
+
+<li><i>CRUDable using API</i> - already mentioned by Heiko, this is
+important so that people are not required to write XML, upload it and
+wait for it to get registered.</li>
+
+<li><i>Versioned</i> - However infrequent, resource types do change.
+The system should allow for that change to happen non-destructively,
+i.e. NOT what happens today that when a metric disappears from
+a resource type it is like it never existed. Versioning does not
+necessarily need to be explicit. It merely can be time-boxed (e.g.
+from now on, these are the things defined on the resource type).</li>
+
+<li><i>Question of identity</i> - how do we find out that 2 resource
+types are actually equal? Think about 2 remote clients definining the
+exact same resource type - should it exist twice or should there (again)
+be some kind of identity arbitration to figure out that those 2 types
+are actually one and the same (btw. we already have a mechanism of 
+computing a resource type "fingerprint" in the codebase which could be
+used to find such things out).</li>
+</ul>
+</p>
+<p><b>Resources</b>
+<ul>
+</ul>
+</p>
+</body>
