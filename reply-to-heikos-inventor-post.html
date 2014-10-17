@@ -65,50 +65,43 @@ on the agents.
 </p>
 <p/>
 
-<h3>Identity Arbitration</h3>
-<p>What I think is quite important feature of the inventory is that
-it should function as a "identity arbiter" for resources and incoming
-data in general. When some piece of data comes in from some agent
-(a measurement let's say), the inventory needs to decide to what
-resources that measurement belongs and how to uniquely identify it
-within the whole system. Once the identity has been established, the
-measurement is then routed further to rhq-metrics or wherever its final
-destination is supposed to be.</p>
-<p>
-The reason for this is that I think we should not force the agents to
-either come up with or remember some server-assigned IDs for various
-things. Some agents might even not be able to remember such things - say
-if we process SNMP data, they have fixed identity (MIB) but may come
-from different agents/resources, hence should have their ID changed
-before being routed to rhq-metrics. This is quite a simple example but
-things might be more complex if we allowed for more "interesting"
-transformations of resources on the server side (resource split/merge).
+<h3>Identity of Agents</h3>
+<p>In the previous chapter I used the <code>agentID</code> that
+identifies the agent as a part of the compound key identifying a piece
+of data. The question of agent identity is more complex though, because
+in a cloud-based environment an application can move amongst physical
+machines and network location while still maintaining its "logical"
+identity. Because our goal is also to enable minimalistic agents
+(bash scripts) that ideally would not have to remember their
+RHQ-assigned ID, we have to have a mechanism to maintain the identity
+of the agent (in the most generic meaning of that word) throughout its
+"journey across the datacenter".
 </p>
-<p>Note that if we change the agent-server topology from a star to a
-DAG, the translation could be done in one of the intermediary nodes
-between the originating agent and the server.
+<p>The most generic way of doing that is to make the physical location
+of the agent versioned/timeboxed (as outlined above) with the user being
+able to declare the change of location of the agent (or rather saying
+that the agent is indeed a moved old agent when the "new" agent comes
+to the discovery queue). If we followed the poly-agent proposal, we
+could also declare an agent-capability "identifiable" which would mean
+that the agent is able remember its unique identifiation assigned by 
+RHQ during first contact. With this ability, the agent could move freely
+and the server would recognize it regardless of its current network
+location.u
+</p>
 <p/>
 
-<h3>Miscellaneous</h3>
-<p>Below are some additional random ideas that I think would make the 
-solution better than what we have now.</p>
-<p/>
-
-<p><b>Two inventories</b> - We have a history of self-manageablity with
-the RHQ server and RHQ resource as well as with the storage cluster
-management within RHQ. I think it would be good to formally admit this
-and have 2 separate inventories - 1 admin inventory which would provide
-the storage for self-manageablity and 1 "normal" inventory that would be
-used for managing the user's infrastructure.</p>
-
-<p><b>Resource Types</b>
+<h3>Resource Types</h3>
 <ul>
 <li><i>Allow multiple inheritance</i> - so that we can truly compose new
-types out of more abstract ones.</li>
+types out of more abstract ones. Currently, RHQ allows for plugin
+inheritance and resource type "sourcing". It does not allow resource
+type inheritance at all, though (i.e. you cannot say this 
+resource type extends that resource type and adds this new metric).</li>
 
 <li><i>CRUDable using API</i> - already mentioned by Heiko, this is
 important so that people are not required to write XML, upload it and
-wait for it to get registered.</li>
+wait for it to get registered. I would go as far as the traditional
+RHQ agents also using this API to define the resource types.</li>
 
 <li><i>Versioned</i> - However infrequent, resource types do change.
 The system should allow for that change to happen non-destructively,
@@ -119,15 +112,94 @@ from now on, these are the things defined on the resource type).</li>
 
 <li><i>Question of identity</i> - how do we find out that 2 resource
 types are actually equal? Think about 2 remote clients definining the
-exact same resource type - should it exist twice or should there (again)
-be some kind of identity arbitration to figure out that those 2 types
-are actually one and the same (btw. we already have a mechanism of 
-computing a resource type "fingerprint" in the codebase which could be
-used to find such things out).</li>
+exact same resource type - should it exist twice or should there be some
+kind of identity arbitration to figure out that those 2 types are
+actually one and the same (btw. we already have a mechanism of computing
+a resource type "fingerprint" in the codebase which could be used to
+find such things out).</li>
+
+<li><i>Resource Type Extractors</i> - taken from the poly-agent proposal
+these things would live on the server and would be able to assist with
+the creation of a resource type out of some undescribed incoming data.
+This boils down to writing down the metadata of individual "things"
+(metrics, operations, configs) the resource type should be composed of.
+As an example, imagine an extractor able to query a JMX server and
+letting the user specify units, names, descriptions, etc. of
+the individual JMX objects, properties, operations, etc.
 </ul>
+
+<h3>Resources</h3>
+<p>As already mentioned above it should be possible to compose resources
+from arbitrary data coming from agents. Because the identity of the data
+does not depend on the identity of resources, this is rather easy and
+resources become mere groupings of data.
 </p>
-<p><b>Resources</b>
+<p>The relationships between resources are realized in the form of edges
+in the graph. There can be arbitrarily named edges and RHQ only defines
+a basic vocabulary of understood names (something along the lines of 
+partOf, runsOn, inGroup, correspondsTo, dependsOn, ...). The user is
+free to create edges with their own names that they can then use for
+custom analytics.
+</p>
+<p>These relationships can be established on any level - either directly
+int the agent that reports those resources, defined by the user, deduced
+by some 3rd party code talking to our API, using a server plugin, ...
+</p>
+<p/>
+
+<h3>Groups</h3>
+<p>Ordinary groups are quite simple in the graph. They are just nodes
+to which the resources are tied using the "inGroup" relationship. As
+with resources, custom relationships can exist on groups making up for
+our lack of imagination for what the users might want to do with the
+model.
+</p>
+<p>A slightly more complex question is that of dynagroup computations.
+Because the dynagroup expressions can reference values of configuration
+properties or traits, both of which are probably going to be stored
+outside of the inventory (we might want to "denormalize" and shove them
+somewhere in the graph if we find it necessary performance wise). For a
+more efficient computation than the current schedule based, we might opt
+for a reactive re-computation of the groups based on the analysis of the
+incoming data (which the iventory receives anyway due to identity
+reasons mentioned above).
+</p>
+<p/>
+
+<h3>Inventory Organization</h3>
+<p>We have a history of self-manageablity with
+the RHQ server and RHQ agent resource as well as with the storage
+cluster management within RHQ. I think it would be good to formally
+admit this and have 2 separate inventories - 1 admin inventory which
+would provide the storage for self-manageablity and 1 "normal" inventory
+that would be used for managing the user's infrastructure.</p>
+<p/>
+
+<h3>Technologies</h3>
+<p>Because we're going to be storing and querying graph structures I think
+we should be looking at using some graph oriented storage mechanism.
+I looked at RDF stores and actual graph databases because they provide
+mechanisms to efficiently query the graph (unlike RDBMSs). There are
+pros and cons for each of the technologies.
+</p>
 <ul>
+<li><b>RDF</b>
+<ul>
+<li>Pros: standard, SPARQL, Sesame has a pluggable backend architecture
+</li>
+<li>Cons: slightly awkard expression of time-boxed relationships, none
+of the impls has easily integrateable backend storage (usually file
+based storage) with the exception of Sesame that has an option to store
+data to Cassandra (using a 3rd party plugin that doesn't support
+transactions).
+<li>Impls: OpenRDF Sesame (java based), Jena (java based), bigdata
+(java based), 4store (native), virtuoso (native)
 </ul>
-</p>
+</li>
+<li><b>Graph Database</b>
+<ul>
+<li>TODO</li>
+</ul>
+</li>
+</ul>
 </body>
