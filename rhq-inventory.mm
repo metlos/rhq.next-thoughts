@@ -1,6 +1,10 @@
 <map version="1.0.1">
 <!-- To view this file, download free mind mapping software FreeMind from http://freemind.sourceforge.net -->
-<node CREATED="1413391404506" ID="ID_271741323" MODIFIED="1413393795030" TEXT="rhq-inventory">
+<node CREATED="1413391404506" ID="ID_271741323" MODIFIED="1413488110573" TEXT="rhq-inventory">
+<hook NAME="accessories/plugins/CreationModificationPlugin_new.properties"/>
+<node CREATED="1413392355046" ID="ID_506651699" MODIFIED="1413487553154" POSITION="right" STYLE="bubble" TEXT="start a forum">
+<icon BUILTIN="full-1"/>
+</node>
 <node CREATED="1413391442137" ID="ID_648375660" MODIFIED="1413396951205" POSITION="right" TEXT="data identity">
 <node CREATED="1413392467172" ID="ID_1827262415" MODIFIED="1413393752118" TEXT="agents">
 <node CREATED="1413392486204" ID="ID_580071746" MODIFIED="1413393752118" TEXT="handle location change"/>
@@ -9,18 +13,27 @@
 <node CREATED="1413409821028" ID="ID_443398317" MODIFIED="1413409879563" TEXT="agents need to &quot;take over&quot; from older agents"/>
 </node>
 </node>
+<node CREATED="1413489408794" ID="ID_1381528684" MODIFIED="1413489589735" TEXT="identity translation">
+<node CREATED="1413489419696" ID="ID_780459459" MODIFIED="1413489441061" TEXT="data from agents might come with non-unique IDs"/>
+<node CREATED="1413489443061" ID="ID_1523772524" MODIFIED="1413489607419" TEXT="need to translate the agent-generated IDs to something unique">
+<linktarget COLOR="#b0b0b0" DESTINATION="ID_1523772524" ENDARROW="Default" ENDINCLINATION="135;0;" ID="Arrow_ID_1557192948" SOURCE="ID_652395669" STARTARROW="None" STARTINCLINATION="422;0;"/>
+<linktarget COLOR="#b0b0b0" DESTINATION="ID_1523772524" ENDARROW="Default" ENDINCLINATION="262;0;" ID="Arrow_ID_1741408137" SOURCE="ID_1816101273" STARTARROW="None" STARTINCLINATION="262;0;"/>
+</node>
+</node>
 <node CREATED="1413393076624" ID="ID_119332806" MODIFIED="1413396965798" TEXT="resource identity">
-<node CREATED="1413393157983" ID="ID_652395669" MODIFIED="1413393752117" TEXT="&quot;agent local&quot; or global">
+<node CREATED="1413393157983" ID="ID_652395669" MODIFIED="1413489607417" TEXT="&quot;agent local&quot; or global">
+<arrowlink DESTINATION="ID_1523772524" ENDARROW="Default" ENDINCLINATION="135;0;" ID="Arrow_ID_1557192948" STARTARROW="None" STARTINCLINATION="422;0;"/>
 <icon BUILTIN="help"/>
 </node>
 </node>
 <node CREATED="1413393108287" ID="ID_1970938207" MODIFIED="1413394264368" TEXT="attribute identity">
 <node CREATED="1413394268332" ID="ID_698259548" MODIFIED="1413394284144" TEXT="attribute is metric, config, deployment, ..."/>
-<node CREATED="1413394289196" ID="ID_747267274" MODIFIED="1413397472371" TEXT="addressable individually">
-<arrowlink DESTINATION="ID_897639778" ENDARROW="Default" ENDINCLINATION="115;-14;" ID="Arrow_ID_1629042408" STARTARROW="None" STARTINCLINATION="152;0;"/>
-</node>
-<node CREATED="1413394383619" ID="ID_1816101273" MODIFIED="1413394402024" TEXT="&quot;agent local&quot; or global">
+<node CREATED="1413394383619" ID="ID_1816101273" MODIFIED="1413489601301" TEXT="&quot;agent local&quot; or global">
+<arrowlink DESTINATION="ID_1523772524" ENDARROW="Default" ENDINCLINATION="262;0;" ID="Arrow_ID_1741408137" STARTARROW="None" STARTINCLINATION="262;0;"/>
 <icon BUILTIN="help"/>
+</node>
+<node CREATED="1413394289196" ID="ID_747267274" MODIFIED="1413489596525" TEXT="addressable individually">
+<arrowlink DESTINATION="ID_897639778" ENDARROW="Default" ENDINCLINATION="115;-14;" ID="Arrow_ID_1629042408" STARTARROW="None" STARTINCLINATION="152;0;"/>
 </node>
 </node>
 <node CREATED="1413393200966" ID="ID_1501304944" MODIFIED="1413393752116" TEXT="change management"/>
@@ -34,22 +47,13 @@
 </node>
 <node CREATED="1413394184533" ID="ID_1384266349" MODIFIED="1413394188832" TEXT="resource composition">
 <node CREATED="1413394194364" ID="ID_1315816631" MODIFIED="1413394208024" TEXT="blueprint for metadata"/>
-<node CREATED="1413394217276" ID="ID_897639778" MODIFIED="1413397474724" TEXT="attributes coming from multiple agents">
-<richcontent TYPE="NOTE"><html>
-  <head>
-    
-  </head>
-  <body>
-    <p>
-      This is important to support ad-hoc resources composed by the operators.
-    </p>
-  </body>
-</html></richcontent>
+<node CREATED="1413394217276" ID="ID_897639778" MODIFIED="1413489501025" TEXT="attributes coming from multiple agents">
 <linktarget COLOR="#b0b0b0" DESTINATION="ID_897639778" ENDARROW="Default" ENDINCLINATION="115;-14;" ID="Arrow_ID_1629042408" SOURCE="ID_747267274" STARTARROW="None" STARTINCLINATION="152;0;"/>
 <linktarget COLOR="#b0b0b0" DESTINATION="ID_897639778" ENDARROW="Default" ENDINCLINATION="66;-19;" ID="Arrow_ID_433515925" SOURCE="ID_548198156" STARTARROW="None" STARTINCLINATION="210;-19;"/>
 <node CREATED="1413397411941" ID="ID_1253837988" MODIFIED="1413397449697" TEXT="does agent even understand resource">
 <icon BUILTIN="help"/>
 </node>
+<node CREATED="1413489486563" ID="ID_1867546019" MODIFIED="1413489488247" TEXT=" important to support ad-hoc resources composed by the operators."/>
 </node>
 <node CREATED="1413409385407" ID="ID_1256469232" MODIFIED="1413409390683" TEXT="mapping">
 <node CREATED="1413409395527" ID="ID_1436832196" MODIFIED="1413409417037" TEXT="merge resources together"/>
@@ -98,9 +102,6 @@
 </node>
 </node>
 </node>
-<node CREATED="1413392355046" ID="ID_506651699" MODIFIED="1413394464843" POSITION="right" STYLE="bubble" TEXT="start a forum">
-<icon BUILTIN="full-1"/>
-</node>
 <node CREATED="1413394493201" ID="ID_1836667736" MODIFIED="1413394495125" POSITION="left" TEXT="API">
 <node CREATED="1413394521793" ID="ID_1975605363" MODIFIED="1413394529037" TEXT="Blueprints">
 <node CREATED="1413394530641" ID="ID_242008290" MODIFIED="1413394560477" TEXT="aka ResourceTypes"/>
@@ -117,6 +118,13 @@
 <node CREATED="1413394624505" ID="ID_1980964949" MODIFIED="1413394703125" TEXT="Can define &quot;vocabulary&quot; of relationships">
 <icon BUILTIN="help"/>
 </node>
+<node CREATED="1413489696404" ID="ID_572554752" MODIFIED="1413489716141" TEXT="blueprint-less resources">
+<node CREATED="1413489717590" ID="ID_1315383142" MODIFIED="1413489722514" TEXT="almost like groups"/>
+<node CREATED="1413489727924" ID="ID_826682641" MODIFIED="1413489751948" TEXT="good for ad-hoc data &quot;grouping&quot;"/>
+<node CREATED="1413534536041" ID="ID_945689401" MODIFIED="1413534547579" TEXT="no metadata">
+<icon BUILTIN="help"/>
+</node>
+</node>
 </node>
 <node CREATED="1413394774783" ID="ID_227023172" MODIFIED="1413394785747" TEXT="Actual resource graph">
 <node CREATED="1413394788295" ID="ID_173718551" MODIFIED="1413395073256" TEXT="Graph traversal (ideally provided)"/>
@@ -127,24 +135,44 @@
 <node CREATED="1413395161427" ID="ID_1798810288" MODIFIED="1413395185479" TEXT="Maybe not that important as the &quot;vocabulary&quot; to ask the questions about graph"/>
 </node>
 </node>
+<node CREATED="1413488130153" ID="ID_794646732" MODIFIED="1413488482538" TEXT="Groups">
+<node CREATED="1413488134311" ID="ID_1518947752" MODIFIED="1413488141636" TEXT="ordinary node type"/>
+<node CREATED="1413488161676" ID="ID_303899529" MODIFIED="1413488188475" TEXT="group membership established &quot;inGroup&quot; relation"/>
+<node CREATED="1413488243105" ID="ID_1735369617" MODIFIED="1413488254445" TEXT="Dynagroups computed as today">
+<node CREATED="1413488432476" ID="ID_589793242" MODIFIED="1413488454037" TEXT="using a &quot;live&quot; graph query"/>
+<node CREATED="1413491990033" ID="ID_1954008216" MODIFIED="1413492039328" TEXT="how to use config values if config lives outside, say in rhq-metric">
+<icon BUILTIN="help"/>
+</node>
+</node>
+</node>
 <node CREATED="1413395189859" ID="ID_306050442" MODIFIED="1413395193695" TEXT="Vocabulary">
 <node CREATED="1413395195515" ID="ID_1095019157" MODIFIED="1413395211902" TEXT="node types">
 <node CREATED="1413395212667" ID="ID_33111389" MODIFIED="1413395215310" TEXT="blueprint"/>
 <node CREATED="1413395216283" ID="ID_1418120233" MODIFIED="1413395219150" TEXT="resource"/>
 <node CREATED="1413410081740" ID="ID_1997361144" MODIFIED="1413410088516" TEXT="group"/>
+<node CREATED="1413488355505" ID="ID_816379151" MODIFIED="1413488361591" TEXT="configs">
+<node CREATED="1413488363702" ID="ID_948180669" MODIFIED="1413488376165" TEXT="necessary for efficient dynagroup computations"/>
+<node CREATED="1413488388399" ID="ID_1255022147" MODIFIED="1413488411343" TEXT="modelled as JSON string or as a graph">
+<icon BUILTIN="help"/>
+</node>
+</node>
 <node CREATED="1413395230338" ID="ID_1221758787" MODIFIED="1413395234126" TEXT="deployment">
 <icon BUILTIN="help"/>
 </node>
 <node CREATED="1413395702350" ID="ID_646144351" MODIFIED="1413395737362" TEXT="alert template">
 <icon BUILTIN="help"/>
+<node CREATED="1413465483955" ID="ID_1304054657" MODIFIED="1413465516450" TEXT="as opposed to the actual alert defs that may have better place in rhq-alert"/>
 </node>
 <node CREATED="1413395721198" ID="ID_323222254" MODIFIED="1413395744282" TEXT="metric schedule">
 <icon BUILTIN="help"/>
 </node>
 </node>
-<node CREATED="1413395242179" ID="ID_1624217814" MODIFIED="1413395245126" TEXT="edge types">
-<node CREATED="1413395253386" ID="ID_1438268593" MODIFIED="1413410101070" TEXT="partOf (parent-child but also app/group membership)"/>
+<node CREATED="1413395242179" ID="ID_1624217814" MODIFIED="1413487611848" TEXT="edge types">
+<node CREATED="1413395253386" ID="ID_1438268593" MODIFIED="1413488206945" TEXT="partOf (child-&gt;parent)"/>
 <node CREATED="1413395353633" ID="ID_384906422" MODIFIED="1413395379013" TEXT="definedBy (thing -&gt; blueprint)"/>
+<node CREATED="1413487366578" ID="ID_1043681864" MODIFIED="1413487408484" TEXT="enumeratedUsing (aka option source)"/>
+<node CREATED="1413488218050" ID="ID_1149096265" MODIFIED="1413488235599" TEXT="inGroup (group membership)"/>
+<node CREATED="1413539206402" ID="ID_620012975" MODIFIED="1413539217698" TEXT="custom types added by users"/>
 </node>
 </node>
 <node CREATED="1413395385705" ID="ID_1073519995" MODIFIED="1413395432265" TEXT="Most of stuff is time-boxed">
@@ -161,5 +189,6 @@
 <node CREATED="1413395806269" ID="ID_995119664" MODIFIED="1413395819697" TEXT="Hook to inform audit about changes"/>
 </node>
 </node>
+<node CREATED="1413467293550" ID="ID_316929475" MODIFIED="1413467299891" POSITION="right" TEXT="RBAC"/>
 </node>
 </map>
