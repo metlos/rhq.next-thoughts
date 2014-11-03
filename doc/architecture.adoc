@@ -1,0 +1,296 @@
+= RHQ Inventory
+
+:toc:
+
+== Architecture
+
+RHQ.next inventory is going to be a radical departure from the simplistic
+"forest" view supported in the RHQ 4.x (forest meaning multiple trees,
+where each tree represents an inventory on a single platform).
+
+The first premise then is to allow the inventory to be a directed *cyclic* 
+graph. We should not disallow cycles because they can and do happen in the 
+real life where "things" are mutually (indirectly) dependent.
+
+A second important premise is that data is fed to RHQ from multiple 
+sources, be it the traditional RHQ agent (that will probably at least 
+conceptually survive), in-app "feedlets" that send data to RHQ in a very 
+simple format similar to that of graphite for example (in fact, we should 
+probably support multiple such formats).
+
+These two premises have large consequences that are discussed below.
+
+The reasons for the departure are the following facts that we found during 
+the prior versions of RHQ:
+
+* Tree is not enough to capture all the various relationships between 
+resources.
+
+* While the agents are necessary for some forms of monitoring/config, they 
+also have a number of drawbacks, so they should not be the sole way of 
+getting data into RHQ:
+
+** _heavyweight_ - the larger number of things "monitored" by the agent, 
+the more resources the agent consumes (and we have a relatively bad track 
+record for memory and CPU consumption).
+
+** _poll model_ - polling the managed resources generates load on them 
+(but any type of monitoring will create that, of course). Scheduling is 
+critical, because it can cause resource consumption spikes both in the 
+managed resource and in the agent itself.
+
+** _security_ - in order for the agent to perform management tasks on many 
+kinds of resources, it needs quite broad privileges. It is also difficult 
+to run processes under specific accounts to limit their privileges.
+
+=== Basic Picture
+
+The basic idea is not that different from the RHQ architecture as it stands 
+today.
+
+[ditaa, basic-picture]
+....
+
++---------------------------------+
+| Machine/VM/Container            |
+|                                 |
+|+-------------+ +------------+   |
+||Application  | |Application |   |
+||             | |            |   |
+||Data         | |Data        |   |
+|+-+-----------+ +--+---------+   |
+|  |                |             |      +----------------+
+|  |                \------------------->|RHQ endpoint(s) |
+|  \------------------------------------>|                |
+|+-------------+                  |      |(might or might |
+|| Agent       |                  |      |not be a server)|
+||             +------------------------>|                |
+|| Plugins     |                  |      +----------------+
+|+-------------+                  |           ^^   ^
+|  ^   ^                          |           ||   |
+|  |   |                          |           ||   |
+|  |   \-----------\              |           ||   |
+|  |               |              |           ||   |
+|  v               v              |           ||   |
+|+-------------+ +-------------+  |           ||   |
+||Application  | |Application  |  |           ||   |discovery
+|+-------------+ +-------------+  |           ||   |
+|                                 |           ||   |
+|   /-----------------------------------------/|   |
+|   |            /-----------------------------/   |    
+|   |            |                |                |    
+|+--+-----+  +---+---+            |                |    
+||Collectd|  |OpenLMI|            |           +----+-----+
+|+--------+  +-------+            |           |Kubernetes|
++---------------------------------+           +----------+
+
+....
+
+The main differences are:
+
+* Apps can send data directly "out".
+* "Out" is not necessarily an RHQ server but merely some kind of endpoint.
+* RHQ can consume/receive data from other monitoring/management solutions.
+
+This leaves us with the following questions:
+
+* How to identify the data that come from the applications (we want to 
+impose as little as possible on the applications in terms of the format or 
+RHQ-specific identification).
+
+* How to identify the agents?
+
+* Do the agents themselves form some kind of hierarchy?
+
+=== Discovery Workflow
+
+We ought to consume management data from other systems like OpenLMI or 
+Kubernetes, collectd, etc. Some of these systems do the discovery of their 
+own and it would be a waste of resources to not reuse the discovery results 
+made by the others.
+
+In the below diagram, one can see that using stuff from other systems like 
+Kubernetes would require a sort of proxy that would translate the inventory 
+as known to the other system to discovery results inside RHQ.
+
+[plantuml, discovery-workflow]
+....
+
+box "RHQ"
+    participant "Discovery Queue" as DQ
+    participant "Hierarchy Resolver" as HR
+    participant "Kubernetes Proxy" as KP
+endbox
+
+participant "Platform Agent 1" as A1
+participant "Platform Agent 2" as A2
+participant "In-app Agent" as IA
+participant "Kubernetes" as K
+
+A1 -> DQ : capabilities
+activate DQ
+note left : identifying, discovery, resources, ...
+DQ --> A1 : ID = "a1"
+deactivate DQ
+...
+A1 -> DQ : discovery results, ID = a1
+activate DQ
+DQ --> A1 : ACK
+DQ -> HR : notify
+HR -> DQ : analyze
+DQ -> DQ : publish
+deactivate DQ
+
+...
+
+A2 -> DQ : capabilities
+activate DQ
+note left : identifying, discovery, resources, ...
+DQ --> A2 : ID = "a2"
+deactivate DQ
+...
+A2 -> DQ : discovery results, ID = a2
+activate DQ
+DQ --> A2 : ACK
+DQ -> HR : notify
+HR -> DQ : analyze
+DQ -> DQ : publish
+deactivate DQ
+
+...
+
+IA -> DQ : discovery results
+activate DQ
+note left : huh, no capabilities, defaults to "monitor"
+DQ --> IA : ACK
+DQ -> HR : notify
+HR -> DQ : analyze
+DQ -> DQ : publish
+deactivate DQ
+
+...
+
+KP -> DQ : capabilities
+note left : identifying, discovery, resources
+DQ --> KP : ID = "kp"
+...
+KP -> K : poll
+activate KP
+KP -> DQ : discovery results, ID = kp
+activate DQ
+DQ --> KP : ACK
+deactivate KP
+DQ -> HR : notify
+HR -> DQ : analyze
+DQ -> DQ : publish
+deactivate DQ
+....
+
+The discovery results of `Platform Agent 1` would look like:
+
+[plantuml, discovery-results-platform-agent]
+....
+
+object "A1/Wildfly" as pa1Wfly {
+    agentID : 
+    ...
+}
+
+object "A1/Wildfly/Datasource" as pa1DS {
+    agentURI : URI
+    ...
+}
+
+object "A1/Wildfly/my-app.war" as pa1War {
+    agentURI : URI
+    ...
+}
+
+pa1DS -> pa1Wfly
+pa1War -> pa1Wfly
+
+....
+
+The discovery results of `Platform Agent 2` would look like:
+
+[plantuml, discovery-results-platform-agent]
+....
+
+object "A2 Postgres" as pa2Postgres {
+    agentURI : URI
+    ...
+}
+
+object "A2 Postgres/Table 'kachna'" as pa2Kachna {
+    agentURI : URI
+    ...
+}
+
+pa2Kachna -> pa2Postgres
+
+....
+
+The discovery results of `In-App agent` would look like:
+
+[plantuml, discovery-results-in-app-agent]
+....
+
+object "Button" as iaBtn {
+    agentURI : URI
+    ...
+}
+
+object "Page" as iaPage {
+    agentURI : URI
+    ...
+}
+
+....
+
+The discovery results of the `Kubernetes` agent would look like:
+
+[plantuml, discovery-results-kubernetes]
+....
+....
+
+TODO
+
+=== Agent Identity
+
+TODO
+
+=== Data Identity
+
+TODO 
+
+=== What Data to Store?
+
+TODO 
+
+=== Storage & Routing of Data
+
+TODO
+
+=== Inventory Navigation and Querying
+
+TODO
+
+== Technology Choices
+
+TODO
+
+=== Graph Databases
+
+TODO
+
+=== RDF
+
+TODO
+
+=== S-RAMP
+
+TODO
+
+=== Kubernetes
+
+TODO
