@@ -1,14 +1,15 @@
-@prefix rhq: <http://rhq.jboss.org/inventory/1.0>.
+@prefix rdf: <urn:kachny#>.
+@prefix rhq: <http://rhq.jboss.org/inventory/1.0/#>.
 
-_:r1 rdf:type rhq:resource.
-_:r1 rhq:name "Resource 1".
+_:r1 rdf:type rhq:resource;
+     rhq:name "Resource 1".
 
-_:r2 rdf:type rhq:resource.
-_:r2 rhq:name "Resource 2".
+_:r2 rdf:type rhq:resource;
+     rhq:name "Resource 2".
 
-_:val1 rdf:type rhq:timeLimitedValue.
-_:val1 rhq:from "1970-01-01".
-_:val1 rhq:to "2014-10-03".
-_:val1 rhq:ref _:r2.
+_:val1 rdf:type rhq:timeLimitedValue;
+       rhq:from "1970-01-01";
+       rhq:to "2014-10-03";
+       rhq:ref _:r2.
 
 _:r1 rhq:contains _:val1.
