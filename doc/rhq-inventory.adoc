@@ -48,7 +48,7 @@ to run processes under specific accounts to limit their privileges.
 The basic idea is not that different from the RHQ architecture as it stands 
 today.
 
-[ditaa]
+[ditaa, basic-picture]
 ....
 
 +---------------------------------+
@@ -60,29 +60,29 @@ today.
 ||Data         | |Data        |   |
 |+-+-----------+ +--+---------+   |
 |  |                |             |      +----------------+
-|  |                \------------------->|RHQ endpoint    |
+|  |                \------------------->|RHQ endpoint(s) |
 |  \------------------------------------>|                |
 |+-------------+                  |      |(might or might |
 || Agent       |                  |      |not be a server)|
 ||             +------------------------>|                |
 || Plugins     |                  |      +----------------+
-|+-------------+                  |           ^^
-|  ^   ^                          |           ||
-|  |   |                          |           ||
-|  |   \-----------\              |           ||
-|  |               |              |           ||
-|  v               v              |           ||
-|+-------------+ +-------------+  |           ||
-||Application  | |Application  |  |           ||
-|+-------------+ +-------------+  |           ||
-|                                 |           ||
-|   /-----------------------------------------/|
-|   |          /-------------------------------/
-|   |          |                  |
-|+--+---+  +---+---+              |
-||Statsd|  |OpenLMI|              |
-|+------+  +-------+              |
-+---------------------------------+
+|+-------------+                  |           ^^   ^
+|  ^   ^                          |           ||   |
+|  |   |                          |           ||   |
+|  |   \-----------\              |           ||   |
+|  |               |              |           ||   |
+|  v               v              |           ||   |
+|+-------------+ +-------------+  |           ||   |
+||Application  | |Application  |  |           ||   |discovery
+|+-------------+ +-------------+  |           ||   |
+|                                 |           ||   |
+|   /-----------------------------------------/|   |
+|   |            /-----------------------------/   |    
+|   |            |                |                |    
+|+--+-----+  +---+---+            |                |    
+||Collectd|  |OpenLMI|            |           +----+-----+
+|+--------+  +-------+            |           |Kubernetes|
++---------------------------------+           +----------+
 
 ....
 
@@ -105,10 +105,155 @@ RHQ-specific identification).
 === Discovery Workflow
 
 We ought to consume management data from other systems like OpenLMI or 
-Kubernetes, statsd, etc. Many of these systems do the discovery of their 
+Kubernetes, collectd, etc. Some of these systems do the discovery of their 
 own and it would be a waste of resources to not reuse the discovery results 
 made by the others.
 
+In the below diagram, one can see that using stuff from other systems like 
+Kubernetes would require a sort of proxy that would translate the inventory 
+as known to the other system to discovery results inside RHQ.
+
+[plantuml, discovery-workflow]
+....
+
+box "RHQ"
+    participant "Discovery Queue" as DQ
+    participant "Hierarchy Resolver" as HR
+    participant "Kubernetes Proxy" as KP
+endbox
+
+participant "Platform Agent 1" as A1
+participant "Platform Agent 2" as A2
+participant "In-app Agent" as IA
+participant "Kubernetes" as K
+
+A1 -> DQ : capabilities
+activate DQ
+note left : identifying, discovery, resources, ...
+DQ --> A1 : ID = "a1"
+deactivate DQ
+...
+A1 -> DQ : discovery results, ID = a1
+activate DQ
+DQ --> A1 : ACK
+DQ -> HR : notify
+HR -> DQ : analyze
+DQ -> DQ : publish
+deactivate DQ
+
+...
+
+A2 -> DQ : capabilities
+activate DQ
+note left : identifying, discovery, resources, ...
+DQ --> A2 : ID = "a2"
+deactivate DQ
+...
+A2 -> DQ : discovery results, ID = a2
+activate DQ
+DQ --> A2 : ACK
+DQ -> HR : notify
+HR -> DQ : analyze
+DQ -> DQ : publish
+deactivate DQ
+
+...
+
+IA -> DQ : discovery results
+activate DQ
+note left : huh, no capabilities, defaults to "monitor"
+DQ --> IA : ACK
+DQ -> HR : notify
+HR -> DQ : analyze
+DQ -> DQ : publish
+deactivate DQ
+
+...
+
+KP -> DQ : capabilities
+note left : identifying, discovery, resources
+DQ --> KP : ID = "kp"
+...
+KP -> K : poll
+activate KP
+KP -> DQ : discovery results, ID = kp
+activate DQ
+DQ --> KP : ACK
+deactivate KP
+DQ -> HR : notify
+HR -> DQ : analyze
+DQ -> DQ : publish
+deactivate DQ
+....
+
+The discovery results of `Platform Agent 1` would look like:
+
+[plantuml, discovery-results-platform-agent]
+....
+
+object "A1/Wildfly" as pa1Wfly {
+    agentID : 
+    ...
+}
+
+object "A1/Wildfly/Datasource" as pa1DS {
+    agentURI : URI
+    ...
+}
+
+object "A1/Wildfly/my-app.war" as pa1War {
+    agentURI : URI
+    ...
+}
+
+pa1DS -> pa1Wfly
+pa1War -> pa1Wfly
+
+....
+
+The discovery results of `Platform Agent 2` would look like:
+
+[plantuml, discovery-results-platform-agent]
+....
+
+object "A2 Postgres" as pa2Postgres {
+    agentURI : URI
+    ...
+}
+
+object "A2 Postgres/Table 'kachna'" as pa2Kachna {
+    agentURI : URI
+    ...
+}
+
+pa2Kachna -> pa2Postgres
+
+....
+
+The discovery results of `In-App agent` would look like:
+
+[plantuml, discovery-results-in-app-agent]
+....
+
+object "Button" as iaBtn {
+    agentURI : URI
+    ...
+}
+
+object "Page" as iaPage {
+    agentURI : URI
+    ...
+}
+
+....
+
+The discovery results of the `Kubernetes` agent would look like:
+
+[plantuml, discovery-results-kubernetes]
+....
+....
+
+TODO
 
 === Agent Identity
 
