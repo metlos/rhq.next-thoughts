@@ -113,8 +113,37 @@ In the below diagram, one can see that using stuff from other systems like
 Kubernetes would require a sort of proxy that would translate the inventory 
 as known to the other system to discovery results inside RHQ.
 
-[plantuml, discovery-workflow]
+A hierarchy resolver in the sequence diagram below is not a single 
+component but rather a number of scripts/server plugins/whatever that uses 
+RHQ server's API to examine the "raw" discovery results (i.e. results 
+directly reported by the agents) and "munges" them to discover additional 
+relationships between them before they enter the inventory. This step is 
+necessary prior to import because it might influence the identity of the 
+data as computed by RHQ. This is of course prone to "race conditions" of 
+sorts where a user might import stuff before the "true" identity of the 
+agent is established. I am not 100% sure but this should not pose any 
+particular problem though because the identity of the agent can change as 
+long as we keep a "link" to its previous identity using the versioning 
+mechanism outlined elsewhere.
+
+Hierarchy resolvers serve two purposes:
+
+. Establish a "full identity" of data coming from agents that are 
+unreasonably dumb (i.e. ones unable to establish full path to the 
+data on the machine).
+
+. Convert the IP address / hostname of the incoming discovery results into 
+something more permanent if possible (Kubernetes pod, actual agent ID as 
+some logical name - resilient against IP changes in cloud env).
+
+The following example illustrates the workflow of the agent hierarchy 
+resolution:
+
+
+[plantuml, discovery-workflow-1]
 ....
+
+autonumber 1
 
 box "RHQ"
     participant "Discovery Queue" as DQ
@@ -124,71 +153,27 @@ endbox
 
 participant "Platform Agent 1" as A1
 participant "Platform Agent 2" as A2
-participant "In-app Agent" as IA
+participant "In-App Agent" as IA
 participant "Kubernetes" as K
 
-A1 -> DQ : capabilities
+A1 -> DQ : capabilities, IP = 1.2.3.1
 activate DQ
 note left : identifying, discovery, resources, ...
 DQ --> A1 : ID = "a1"
 deactivate DQ
 ...
-A1 -> DQ : discovery results, ID = a1
+A1 -> DQ : discovery results, ID = a1, IP = 1.2.3.1
 activate DQ
 DQ --> A1 : ACK
 DQ -> HR : notify
 HR -> DQ : analyze
-DQ -> DQ : publish
 deactivate DQ
 
-...
-
-A2 -> DQ : capabilities
-activate DQ
-note left : identifying, discovery, resources, ...
-DQ --> A2 : ID = "a2"
-deactivate DQ
-...
-A2 -> DQ : discovery results, ID = a2
-activate DQ
-DQ --> A2 : ACK
-DQ -> HR : notify
-HR -> DQ : analyze
-DQ -> DQ : publish
-deactivate DQ
-
-...
-
-IA -> DQ : discovery results
-activate DQ
-note left : huh, no capabilities, defaults to "monitor"
-DQ --> IA : ACK
-DQ -> HR : notify
-HR -> DQ : analyze
-DQ -> DQ : publish
-deactivate DQ
-
-...
-
-KP -> DQ : capabilities
-note left : identifying, discovery, resources
-DQ --> KP : ID = "kp"
-...
-KP -> K : poll
-activate KP
-KP -> DQ : discovery results, ID = kp
-activate DQ
-DQ --> KP : ACK
-deactivate KP
-DQ -> HR : notify
-HR -> DQ : analyze
-DQ -> DQ : publish
-deactivate DQ
 ....
 
 The discovery results of `Platform Agent 1` would look like:
 
-[plantuml, discovery-results-platform-agent]
+[plantuml, discovery-results-platform-agent1]
 ....
 
 object "A1/Wildfly" as pa1Wfly {
@@ -206,54 +191,399 @@ object "A1/Wildfly/my-app.war" as pa1War {
     ...
 }
 
-pa1DS -> pa1Wfly
-pa1War -> pa1Wfly
+pa1DS -> pa1Wfly : childOf >
+pa1War -> pa1Wfly  : childOf >
+
+....
+
+At this point in time there are no other discovery results so this is also 
+the contents of the discovery queue.
+
+[plantuml, discovery-queue-1]
+....
+
+package "Platform Agent 1, ID = a1, IP = 1.2.3.1" {
+    object "A1/Wildfly" as pa1Wfly {
+        agentID : 
+        ...
+    }
+
+    object "A1/Wildfly/Datasource" as pa1DS {
+        agentURI : URI
+        ...
+    }
+
+    object "A1/Wildfly/my-app.war" as pa1War {
+        agentURI : URI
+        ...
+    }
+
+    pa1DS -> pa1Wfly : childOf >
+    pa1War -> pa1Wfly  : childOf >
+}
+....
+
+Next, the second platform agent sends its discovery results in.
+
+[plantuml, discovery-workflow-2]
+....
+
+autonumber 7
+
+box "RHQ"
+    participant "Discovery Queue" as DQ
+    participant "Hierarchy Resolver" as HR
+    participant "Kubernetes Proxy" as KP
+endbox
+
+participant "Platform Agent 1" as A1
+participant "Platform Agent 2" as A2
+participant "In-App Agent" as IA
+participant "Kubernetes" as K
+
+A2 -> DQ : capabilities, IP = 1.2.3.2
+activate DQ
+note left : identifying, discovery, resources, ...
+DQ --> A2 : ID = "a2"
+deactivate DQ
+...
+A2 -> DQ : discovery results, ID = a2, IP = 1.2.3.3
+activate DQ
+DQ --> A2 : ACK
+DQ -> HR : notify
+HR -> DQ : analyze
 
 ....
 
 The discovery results of `Platform Agent 2` would look like:
 
-[plantuml, discovery-results-platform-agent]
+[plantuml, discovery-results-platform-agent2]
 ....
 
-object "A2 Postgres" as pa2Postgres {
+object "A2/Postgres" as pa2Postgres {
     agentURI : URI
     ...
 }
 
-object "A2 Postgres/Table 'kachna'" as pa2Kachna {
+object "A2/Postgres/Table 'kachna'" as pa2Kachna {
     agentURI : URI
     ...
 }
 
-pa2Kachna -> pa2Postgres
+pa2Kachna -> pa2Postgres : childOf >
 
 ....
 
-The discovery results of `In-App agent` would look like:
+And the discovery queue would end up looking like this. Note that because 
+the agent supports identity, the change of its IP between its "announce" 
+and sending of the actual discovery results didn't confuse things.
 
-[plantuml, discovery-results-in-app-agent]
+[plantuml, discovery-queue-2]
 ....
 
-object "Button" as iaBtn {
-    agentURI : URI
-    ...
+package "Platform Agent 1, ID = a1, IP = 1.2.3.1" {
+    object "A1/Wildfly" as pa1Wfly {
+        agentID : 
+        ...
+    }
+
+    object "A1/Wildfly/Datasource" as pa1DS {
+        agentURI : URI
+        ...
+    }
+
+    object "A1/Wildfly/my-app.war" as pa1War {
+        agentURI : URI
+        ...
+    }
+
+    pa1DS -> pa1Wfly : childOf >
+    pa1War -> pa1Wfly  : childOf >
 }
 
-object "Page" as iaPage {
-    agentURI : URI
-    ...
+package "Platform Agent 2, ID = a2, IP = 1.2.3.3" {
+    object "A2/Postgres" as pa2Postgres {
+        agentURI : URI
+        ...
+    }
+
+    object "A2/Postgres/Table 'kachna'" as pa2Kachna {
+        agentURI : URI
+        ...
+    }
+
+    pa2Kachna -> pa2Postgres : childOf >
+}
+....
+
+Next, the `In-App Agent` reports. This is a dumb agent that doesn't know a 
+thing about its environment, it just wants to send `name=value` pairs.
+
+[plantuml, discovery-workflow-3]
+....
+
+autonumber 13
+
+box "RHQ"
+    participant "Discovery Queue" as DQ
+    participant "Hierarchy Resolver" as HR
+    participant "Kubernetes Proxy" as KP
+endbox
+
+participant "Platform Agent 1" as A1
+participant "Platform Agent 2" as A2
+participant "In-App Agent" as IA
+participant "Kubernetes" as K
+
+IA -> DQ : discovery results, IP = 1.2.3.4
+activate DQ
+note left : huh, no capabilities, defaults to "monitor"
+DQ --> IA : ACK
+DQ -> HR : notify
+HR -> DQ : analyze
+deactivate DQ
+
+....
+
+RHQ doesn't have any other information but the IP address to identify this 
+agent (it doesn't support identifying itself), so the discovery queue will 
+look as follows momentarily:
+
+[plantuml, discovery-queue-3]
+....
+
+package "Platform Agent 1, ID = a1, IP = 1.2.3.1" {
+    object "A1/Wildfly" as pa1Wfly {
+        agentID : 
+        ...
+    }
+
+    object "A1/Wildfly/Datasource" as pa1DS {
+        agentURI : URI
+        ...
+    }
+
+    object "A1/Wildfly/my-app.war" as pa1War {
+        agentURI : URI
+        ...
+    }
+
+    pa1DS -> pa1Wfly : childOf >
+    pa1War -> pa1Wfly  : childOf >
+}
+
+package "Platform Agent 2, ID = a2, IP = 1.2.3.3" {
+    object "A2/Postgres" as pa2Postgres {
+        agentURI : URI
+        ...
+    }
+
+    object "A2/Postgres/Table 'kachna'" as pa2Kachna {
+        agentURI : URI
+        ...
+    }
+
+    pa2Kachna -> pa2Postgres : childOf >
+}
+
+package "In-App Agent, ID = ?, IP = 1.2.3.4" {
+    object "Button" as iaBtn {
+        agentURI : URI
+        ...
+    }
+
+    object "Page" as iaPage {
+        agentURI : URI
+        ...
+    }
 }
 
 ....
 
-The discovery results of the `Kubernetes` agent would look like:
+Now, we receive from the `Kubernetes Proxy` agent that reports `Kubernetes` 
+structure:
+
+[plantuml, discovery-workflow-3]
+....
+
+autonumber 17
+
+box "RHQ"
+    participant "Discovery Queue" as DQ
+    participant "Hierarchy Resolver" as HR
+    participant "Kubernetes Proxy" as KP
+endbox
+
+participant "Platform Agent 1" as A1
+participant "Platform Agent 2" as A2
+participant "In-App Agent" as IA
+participant "Kubernetes" as K
+
+KP -> DQ : capabilities, IP = 1.2.3.5
+activate DQ
+note left : identifying, discovery, resources
+DQ --> KP : ID = "kp"
+deactivate DQ
+...
+KP -> K : poll
+activate KP
+KP -> DQ : discovery results, ID = kp, IP = 1.2.3.5
+activate DQ
+DQ --> KP : ACK
+deactivate KP
+DQ -> HR : notify
+HR -> DQ : analyze
+deactivate DQ
+....
+
+This agent reports the following discovery results:
 
 [plantuml, discovery-results-kubernetes]
 ....
+
+object "Service 1" as srvc1 {
+    agentURI : URI
+}
+
+object "Pod 1" as pod1 {
+    agentURI : URI
+    ...
+}
+
+object "Pod 2" as pod2 {
+    agentURI : URI
+    ...
+}
+
+object "Pod 1 Container 1" as pod1Cont1 {
+    agentURI : URI
+    ...
+}
+
+object "Pod 1 Container 2" as pod1Cont2 {
+    agentURI : URI
+    ...
+}
+
+object "Pod 2 Container 1" as pod2Cont1 {
+    agentURI : URI
+    ...
+}
+
+pod1 -> srvc1 : childOf >
+pod2 -> srvc1 : childOf >
+
+pod1Cont1 -- pod1 : childOf >
+pod1Cont2 -- pod1 : childOf >
+pod2Cont1 -- pod2 : childOf >
+
 ....
 
-TODO
+Now, the hierarchy resolver kicks in and realizes, based on comparing the 
+data in the discovery results of the kubernetes proxy and the agents' IP 
+addresses that the IP address of `In-App Agent` corresponds to an IP 
+address of pod `Pod 1`. It is therefore able to transform the discovery 
+queue to look like this:
+
+[plantuml, discovery-queue-3]
+....
+
+package "Platform Agent 1, ID = a1, IP = 1.2.3.1" {
+    object "A1/Wildfly" as pa1Wfly {
+        agentID : 
+        ...
+    }
+
+    object "A1/Wildfly/Datasource" as pa1DS {
+        agentURI : URI
+        ...
+    }
+
+    object "A1/Wildfly/my-app.war" as pa1War {
+        agentURI : URI
+        ...
+    }
+
+    pa1DS -> pa1Wfly : childOf >
+    pa1War -> pa1Wfly  : childOf >
+}
+
+package "Platform Agent 2, ID = a2, IP = 1.2.3.3" {
+    object "A2/Postgres" as pa2Postgres {
+        agentURI : URI
+        ...
+    }
+
+    object "A2/Postgres/Table 'kachna'" as pa2Kachna {
+        agentURI : URI
+        ...
+    }
+
+    pa2Kachna -> pa2Postgres : childOf >
+}
+
+package "In-App Agent, ID = pod1, IP = 1.2.3.4" {
+    object "Button" as iaBtn {
+        agentURI : URI
+        ...
+    }
+
+    object "Page" as iaPage {
+        agentURI : URI
+        ...
+    }
+}
+
+package "Kubernetes Proxy, ID = kp, IP = 1.2.3.5" {
+    object "Service 1" as srvc1 {
+        agentURI : URI
+    }
+
+    object "Pod 1" as pod1 {
+        agentURI : URI
+        ...
+    }
+
+    object "Pod 2" as pod2 {
+        agentURI : URI
+        ...
+    }
+
+    object "Pod 1 Container 1" as pod1Cont1 {
+        agentURI : URI
+        ...
+    }
+
+    object "Pod 1 Container 2" as pod1Cont2 {
+        agentURI : URI
+        ...
+    }
+
+    object "Pod 2 Container 1" as pod2Cont1 {
+        agentURI : URI
+        ...
+    }
+
+    pod1 -> srvc1 : childOf >
+    pod2 -> srvc1 : childOf >
+
+    pod1Cont1 -- pod1 : childOf >
+    pod1Cont2 -- pod1 : childOf >
+    pod2Cont1 -- pod2 : childOf >
+}
+
+iaBtn -- pod1 : childOf >
+iaPage -- pod1 : childOf >
+
+....
+
+Notice that it was not able to realize what container the application 
+managed by the `In-App Agent` runs in, because that information is not 
+available in kubernetes (containers in a pod share IP address and (parts 
+of) filesystem), but it was able to locate the agent and assign it ID of 
+`pod1` so that it is IP-independent. The user could have the possibility to 
+reorganize the the resource hierarchy even further by specifying that the 2 
+resources lived under `Pod1 Container2` resource if they so wished.
 
 === Agent Identity
 
