@@ -533,9 +533,44 @@ made by the others.</p>
 Kubernetes would require a sort of proxy that would translate the inventory
 as known to the other system to discovery results inside RHQ.</p>
 </div>
+<div class="paragraph">
+<p>A hierarchy resolver in the sequence diagram below is not a single
+component but rather a number of scripts/server plugins/whatever that uses
+RHQ server&#8217;s API to examine the "raw" discovery results (i.e. results
+directly reported by the agents) and "munges" them to discover additional
+relationships between them before they enter the inventory. This step is
+necessary prior to import because it might influence the identity of the
+data as computed by RHQ. This is of course prone to "race conditions" of
+sorts where a user might import stuff before the "true" identity of the
+agent is established. I am not 100% sure but this should not pose any
+particular problem though because the identity of the agent can change as
+long as we keep a "link" to its previous identity using the versioning
+mechanism outlined elsewhere.</p>
+</div>
+<div class="paragraph">
+<p>Hierarchy resolvers serve two purposes:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Establish a "full identity" of data coming from agents that are
+unreasonably dumb (i.e. ones unable to establish full path to the
+data on the machine).</p>
+</li>
+<li>
+<p>Convert the IP address / hostname of the incoming discovery results into
+something more permanent if possible (Kubernetes pod, actual agent ID as
+some logical name - resilient against IP changes in cloud env).</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The following example illustrates the workflow of the agent hierarchy
+resolution:</p>
+</div>
 <div class="imageblock">
 <div class="content">
-<img src="discovery-workflow.png" alt="discovery workflow" width="1196" height="1174">
+<img src="discovery-workflow-1.png" alt="discovery workflow 1" width="1158" height="340">
 </div>
 </div>
 <div class="paragraph">
@@ -543,7 +578,24 @@ as known to the other system to discovery results inside RHQ.</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="discovery-results-platform-agent.png" alt="discovery results platform agent" width="455" height="112">
+<img src="discovery-results-platform-agent1.png" alt="discovery results platform agent1" width="513" height="132">
+</div>
+</div>
+<div class="paragraph">
+<p>At this point in time there are no other discovery results so this is also
+the contents of the discovery queue.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="discovery-queue-1.png" alt="discovery queue 1" width="562" height="243">
+</div>
+</div>
+<div class="paragraph">
+<p>Next, the second platform agent sends its discovery results in.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="discovery-workflow-2.png" alt="discovery workflow 2" width="1158" height="340">
 </div>
 </div>
 <div class="paragraph">
@@ -551,27 +603,75 @@ as known to the other system to discovery results inside RHQ.</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="discovery-results-platform-agent.png" alt="discovery results platform agent" width="326" height="68">
+<img src="discovery-results-platform-agent2.png" alt="discovery results platform agent2" width="385" height="68">
 </div>
 </div>
 <div class="paragraph">
-<p>The discovery results of <code>In-App agent</code> would look like:</p>
+<p>And the discovery queue would end up looking like this. Note that because
+the agent supports identity, the change of its IP between its "announce"
+and sending of the actual discovery results didn&#8217;t confuse things.</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="discovery-results-in-app-agent.png" alt="discovery results in app agent" width="222" height="68">
+<img src="discovery-queue-2.png" alt="discovery queue 2" width="986" height="243">
 </div>
 </div>
 <div class="paragraph">
-<p>The discovery results of the <code>Kubernetes</code> agent would look like:</p>
+<p>Next, the <code>In-App Agent</code> reports. This is a dumb agent that doesn&#8217;t know a
+thing about its environment, it just wants to send <code>name=value</code> pairs.</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="discovery-results-kubernetes.png" alt="discovery results kubernetes" width="147" height="48">
+<img src="discovery-workflow-3.png" alt="discovery workflow 3" width="1197" height="254">
 </div>
 </div>
 <div class="paragraph">
-<p>TODO</p>
+<p>RHQ doesn&#8217;t have any other information but the IP address to identify this
+agent (it doesn&#8217;t support identifying itself), so the discovery queue will
+look as follows momentarily:</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="discovery-queue-3.png" alt="discovery queue 3" width="1286" height="243">
+</div>
+</div>
+<div class="paragraph">
+<p>Now, we receive from the <code>Kubernetes Proxy</code> agent that reports <code>Kubernetes</code>
+structure:</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="discovery-workflow-3.png" alt="discovery workflow 3" width="1138" height="369">
+</div>
+</div>
+<div class="paragraph">
+<p>This agent reports the following discovery results:</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="discovery-results-kubernetes.png" alt="discovery results kubernetes" width="637" height="196">
+</div>
+</div>
+<div class="paragraph">
+<p>Now, the hierarchy resolver kicks in and realizes, based on comparing the
+data in the discovery results of the kubernetes proxy and the agents' IP
+addresses that the IP address of <code>In-App Agent</code> corresponds to an IP
+address of pod <code>Pod 1</code>. It is therefore able to transform the discovery
+queue to look like this:</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="discovery-queue-3.png" alt="discovery queue 3" width="1851" height="373">
+</div>
+</div>
+<div class="paragraph">
+<p>Notice that it was not able to realize what container the application
+managed by the <code>In-App Agent</code> runs in, because that information is not
+available in kubernetes (containers in a pod share IP address and (parts
+of) filesystem), but it was able to locate the agent and assign it ID of
+<code>pod1</code> so that it is IP-independent. The user could have the possibility to
+reorganize the the resource hierarchy even further by specifying that the 2
+resources lived under <code>Pod1 Container2</code> resource if they so wished.</p>
 </div>
 </div>
 <div class="sect2">
@@ -641,7 +741,7 @@ as known to the other system to discovery results inside RHQ.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2014-11-03 23:18:21 CET
+Last updated 2014-11-04 18:13:33 CET
 </div>
 </div>
 </body>
