@@ -8,7 +8,7 @@ RHQ.next inventory is going to be a radical departure from the simplistic
 "forest" view supported in the RHQ 4.x (forest meaning multiple trees,
 where each tree represents an inventory on a single platform).
 
-The first premise then is to allow the inventory to be a directed *cyclic* 
+The first premise is to allow the inventory to be a directed *cyclic* 
 graph. We should not disallow cycles because they can and do happen in the 
 real life where "things" are mutually (indirectly) dependent.
 
@@ -16,7 +16,10 @@ A second important premise is that data is fed to RHQ from multiple
 sources, be it the traditional RHQ agent (that will probably at least 
 conceptually survive), in-app "feedlets" that send data to RHQ in a very 
 simple format similar to that of graphite for example (in fact, we should 
-probably support multiple such formats).
+probably support multiple such formats) or even simple bash scripts 
+collecting a bunch of data and "curling" it up to the rhq endpoint in some 
+format (graphite?). Also we should support harvesting information out of 
+3rd party monitoring/management products like collectd, openLMI or other.
 
 These two premises have large consequences that are discussed below.
 
@@ -24,7 +27,9 @@ The reasons for the departure are the following facts that we found during
 the prior versions of RHQ:
 
 * Tree is not enough to capture all the various relationships between 
-resources.
+resources. While it is good to capture the "containment" of services within 
+processes, it cannot capture relationships between independent processes or 
+machines well.
 
 * While the agents are necessary for some forms of monitoring/config, they 
 also have a number of drawbacks, so they should not be the sole way of 
@@ -102,6 +107,10 @@ RHQ-specific identification).
 
 * Do the agents themselves form some kind of hierarchy?
 
+=== Versioning
+
+TODO
+
 === Discovery Workflow
 
 We ought to consume management data from other systems like OpenLMI or 
@@ -138,7 +147,6 @@ some logical name - resilient against IP changes in cloud env).
 
 The following example illustrates the workflow of the agent hierarchy 
 resolution:
-
 
 [plantuml, discovery-workflow-1]
 ....
@@ -177,17 +185,14 @@ The discovery results of `Platform Agent 1` would look like:
 ....
 
 object "A1/Wildfly" as pa1Wfly {
-    agentID : 
     ...
 }
 
 object "A1/Wildfly/Datasource" as pa1DS {
-    agentURI : URI
     ...
 }
 
 object "A1/Wildfly/my-app.war" as pa1War {
-    agentURI : URI
     ...
 }
 
@@ -204,17 +209,14 @@ the contents of the discovery queue.
 
 package "Platform Agent 1, ID = a1, IP = 1.2.3.1" {
     object "A1/Wildfly" as pa1Wfly {
-        agentID : 
         ...
     }
 
     object "A1/Wildfly/Datasource" as pa1DS {
-        agentURI : URI
         ...
     }
 
     object "A1/Wildfly/my-app.war" as pa1War {
-        agentURI : URI
         ...
     }
 
@@ -261,12 +263,10 @@ The discovery results of `Platform Agent 2` would look like:
 ....
 
 object "A2/Postgres" as pa2Postgres {
-    agentURI : URI
     ...
 }
 
 object "A2/Postgres/Table 'kachna'" as pa2Kachna {
-    agentURI : URI
     ...
 }
 
@@ -283,17 +283,14 @@ and sending of the actual discovery results didn't confuse things.
 
 package "Platform Agent 1, ID = a1, IP = 1.2.3.1" {
     object "A1/Wildfly" as pa1Wfly {
-        agentID : 
         ...
     }
 
     object "A1/Wildfly/Datasource" as pa1DS {
-        agentURI : URI
         ...
     }
 
     object "A1/Wildfly/my-app.war" as pa1War {
-        agentURI : URI
         ...
     }
 
@@ -303,12 +300,10 @@ package "Platform Agent 1, ID = a1, IP = 1.2.3.1" {
 
 package "Platform Agent 2, ID = a2, IP = 1.2.3.3" {
     object "A2/Postgres" as pa2Postgres {
-        agentURI : URI
         ...
     }
 
     object "A2/Postgres/Table 'kachna'" as pa2Kachna {
-        agentURI : URI
         ...
     }
 
@@ -354,17 +349,14 @@ look as follows momentarily:
 
 package "Platform Agent 1, ID = a1, IP = 1.2.3.1" {
     object "A1/Wildfly" as pa1Wfly {
-        agentID : 
         ...
     }
 
     object "A1/Wildfly/Datasource" as pa1DS {
-        agentURI : URI
         ...
     }
 
     object "A1/Wildfly/my-app.war" as pa1War {
-        agentURI : URI
         ...
     }
 
@@ -374,12 +366,10 @@ package "Platform Agent 1, ID = a1, IP = 1.2.3.1" {
 
 package "Platform Agent 2, ID = a2, IP = 1.2.3.3" {
     object "A2/Postgres" as pa2Postgres {
-        agentURI : URI
         ...
     }
 
     object "A2/Postgres/Table 'kachna'" as pa2Kachna {
-        agentURI : URI
         ...
     }
 
@@ -388,12 +378,10 @@ package "Platform Agent 2, ID = a2, IP = 1.2.3.3" {
 
 package "In-App Agent, ID = ?, IP = 1.2.3.4" {
     object "Button" as iaBtn {
-        agentURI : URI
         ...
     }
 
     object "Page" as iaPage {
-        agentURI : URI
         ...
     }
 }
@@ -403,7 +391,7 @@ package "In-App Agent, ID = ?, IP = 1.2.3.4" {
 Now, we receive from the `Kubernetes Proxy` agent that reports `Kubernetes` 
 structure:
 
-[plantuml, discovery-workflow-3]
+[plantuml, discovery-workflow-4]
 ....
 
 autonumber 17
@@ -442,31 +430,26 @@ This agent reports the following discovery results:
 ....
 
 object "Service 1" as srvc1 {
-    agentURI : URI
+    ...
 }
 
 object "Pod 1" as pod1 {
-    agentURI : URI
     ...
 }
 
 object "Pod 2" as pod2 {
-    agentURI : URI
     ...
 }
 
 object "Pod 1 Container 1" as pod1Cont1 {
-    agentURI : URI
     ...
 }
 
 object "Pod 1 Container 2" as pod1Cont2 {
-    agentURI : URI
     ...
 }
 
 object "Pod 2 Container 1" as pod2Cont1 {
-    agentURI : URI
     ...
 }
 
@@ -485,22 +468,19 @@ addresses that the IP address of `In-App Agent` corresponds to an IP
 address of pod `Pod 1`. It is therefore able to transform the discovery 
 queue to look like this:
 
-[plantuml, discovery-queue-3]
+[plantuml, discovery-queue-4]
 ....
 
 package "Platform Agent 1, ID = a1, IP = 1.2.3.1" {
     object "A1/Wildfly" as pa1Wfly {
-        agentID : 
         ...
     }
 
     object "A1/Wildfly/Datasource" as pa1DS {
-        agentURI : URI
         ...
     }
 
     object "A1/Wildfly/my-app.war" as pa1War {
-        agentURI : URI
         ...
     }
 
@@ -510,12 +490,10 @@ package "Platform Agent 1, ID = a1, IP = 1.2.3.1" {
 
 package "Platform Agent 2, ID = a2, IP = 1.2.3.3" {
     object "A2/Postgres" as pa2Postgres {
-        agentURI : URI
         ...
     }
 
     object "A2/Postgres/Table 'kachna'" as pa2Kachna {
-        agentURI : URI
         ...
     }
 
@@ -524,43 +502,36 @@ package "Platform Agent 2, ID = a2, IP = 1.2.3.3" {
 
 package "In-App Agent, ID = pod1, IP = 1.2.3.4" {
     object "Button" as iaBtn {
-        agentURI : URI
         ...
     }
 
     object "Page" as iaPage {
-        agentURI : URI
         ...
     }
 }
 
 package "Kubernetes Proxy, ID = kp, IP = 1.2.3.5" {
     object "Service 1" as srvc1 {
-        agentURI : URI
+        ...
     }
 
     object "Pod 1" as pod1 {
-        agentURI : URI
         ...
     }
 
     object "Pod 2" as pod2 {
-        agentURI : URI
         ...
     }
 
     object "Pod 1 Container 1" as pod1Cont1 {
-        agentURI : URI
         ...
     }
 
     object "Pod 1 Container 2" as pod1Cont2 {
-        agentURI : URI
         ...
     }
 
     object "Pod 2 Container 1" as pod2Cont1 {
-        agentURI : URI
         ...
     }
 
@@ -585,9 +556,27 @@ of) filesystem), but it was able to locate the agent and assign it ID of
 reorganize the the resource hierarchy even further by specifying that the 2 
 resources lived under `Pod1 Container2` resource if they so wished.
 
+When the IP of the `Pod 1` changes again, we receive data from the `In-App 
+Agent` from that different IP and because it doesn't know how to identify 
+itself, it'll end up "looking" like a new agent momentarily. As soon as the 
+kubernetes part of the hierarchy resolver sees this, it checks that IP 
+again, realizes that it now is the IP of `Pod 1` and will assign the `pod1` 
+ID to that agent and merge the "newly discovered" resources with the 
+already existing ones.
+
 === Agent Identity
 
-TODO
+The previous chapter, <<Discovery Workflow>>, touched on the agent identity 
+already.
+
+Basically, the agent can either be capable of remembering its RHQ-assigned 
+ID or, when it's not, the agent ID might be deduced on the server-side by 
+hierarchy resolvers.
+
+If that fails, too, there should be a fallback option to manually map a new 
+agent in the discovery queue to some other existing agent using our APIs. 
+The discovered resources would be merged with the existing ones in some way 
+or fashion.
 
 === Data Identity
 
