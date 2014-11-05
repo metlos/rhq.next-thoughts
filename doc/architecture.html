@@ -423,7 +423,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 where each tree represents an inventory on a single platform).</p>
 </div>
 <div class="paragraph">
-<p>The first premise then is to allow the inventory to be a directed <strong>cyclic</strong>
+<p>The first premise is to allow the inventory to be a directed <strong>cyclic</strong>
 graph. We should not disallow cycles because they can and do happen in the
 real life where "things" are mutually (indirectly) dependent.</p>
 </div>
@@ -432,7 +432,10 @@ real life where "things" are mutually (indirectly) dependent.</p>
 sources, be it the traditional RHQ agent (that will probably at least
 conceptually survive), in-app "feedlets" that send data to RHQ in a very
 simple format similar to that of graphite for example (in fact, we should
-probably support multiple such formats).</p>
+probably support multiple such formats) or even simple bash scripts
+collecting a bunch of data and "curling" it up to the rhq endpoint in some
+format (graphite?). Also we should support harvesting information out of
+3rd party monitoring/management products like collectd, openLMI or other.</p>
 </div>
 <div class="paragraph">
 <p>These two premises have large consequences that are discussed below.</p>
@@ -445,7 +448,9 @@ the prior versions of RHQ:</p>
 <ul>
 <li>
 <p>Tree is not enough to capture all the various relationships between
-resources.</p>
+resources. While it is good to capture the "containment" of services within
+processes, it cannot capture relationships between independent processes or
+machines well.</p>
 </li>
 <li>
 <p>While the agents are necessary for some forms of monitoring/config, they
@@ -521,6 +526,12 @@ RHQ-specific identification).</p>
 </div>
 </div>
 <div class="sect2">
+<h3 id="_versioning">Versioning</h3>
+<div class="paragraph">
+<p>TODO</p>
+</div>
+</div>
+<div class="sect2">
 <h3 id="_discovery_workflow">Discovery Workflow</h3>
 <div class="paragraph">
 <p>We ought to consume management data from other systems like OpenLMI or
@@ -578,7 +589,7 @@ resolution:</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="discovery-results-platform-agent1.png" alt="discovery results platform agent1" width="513" height="132">
+<img src="discovery-results-platform-agent1.png" alt="discovery results platform agent1" width="513" height="114">
 </div>
 </div>
 <div class="paragraph">
@@ -587,7 +598,7 @@ the contents of the discovery queue.</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="discovery-queue-1.png" alt="discovery queue 1" width="562" height="243">
+<img src="discovery-queue-1.png" alt="discovery queue 1" width="562" height="225">
 </div>
 </div>
 <div class="paragraph">
@@ -603,7 +614,7 @@ the contents of the discovery queue.</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="discovery-results-platform-agent2.png" alt="discovery results platform agent2" width="385" height="68">
+<img src="discovery-results-platform-agent2.png" alt="discovery results platform agent2" width="385" height="56">
 </div>
 </div>
 <div class="paragraph">
@@ -613,7 +624,7 @@ and sending of the actual discovery results didn&#8217;t confuse things.</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="discovery-queue-2.png" alt="discovery queue 2" width="986" height="243">
+<img src="discovery-queue-2.png" alt="discovery queue 2" width="986" height="225">
 </div>
 </div>
 <div class="paragraph">
@@ -632,7 +643,7 @@ look as follows momentarily:</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="discovery-queue-3.png" alt="discovery queue 3" width="1286" height="243">
+<img src="discovery-queue-3.png" alt="discovery queue 3" width="1286" height="225">
 </div>
 </div>
 <div class="paragraph">
@@ -641,7 +652,7 @@ structure:</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="discovery-workflow-3.png" alt="discovery workflow 3" width="1138" height="369">
+<img src="discovery-workflow-4.png" alt="discovery workflow 4" width="1138" height="369">
 </div>
 </div>
 <div class="paragraph">
@@ -649,7 +660,7 @@ structure:</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="discovery-results-kubernetes.png" alt="discovery results kubernetes" width="637" height="196">
+<img src="discovery-results-kubernetes.png" alt="discovery results kubernetes" width="602" height="172">
 </div>
 </div>
 <div class="paragraph">
@@ -661,7 +672,7 @@ queue to look like this:</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="discovery-queue-3.png" alt="discovery queue 3" width="1851" height="373">
+<img src="discovery-queue-4.png" alt="discovery queue 4" width="1837" height="343">
 </div>
 </div>
 <div class="paragraph">
@@ -673,11 +684,32 @@ of) filesystem), but it was able to locate the agent and assign it ID of
 reorganize the the resource hierarchy even further by specifying that the 2
 resources lived under <code>Pod1 Container2</code> resource if they so wished.</p>
 </div>
+<div class="paragraph">
+<p>When the IP of the <code>Pod 1</code> changes again, we receive data from the <code>In-App
+Agent</code> from that different IP and because it doesn&#8217;t know how to identify
+itself, it&#8217;ll end up "looking" like a new agent momentarily. As soon as the
+kubernetes part of the hierarchy resolver sees this, it checks that IP
+again, realizes that it now is the IP of <code>Pod 1</code> and will assign the <code>pod1</code>
+ID to that agent and merge the "newly discovered" resources with the
+already existing ones.</p>
+</div>
 </div>
 <div class="sect2">
 <h3 id="_agent_identity">Agent Identity</h3>
 <div class="paragraph">
-<p>TODO</p>
+<p>The previous chapter, <a href="#_discovery_workflow">Discovery Workflow</a>, touched on the agent identity
+already.</p>
+</div>
+<div class="paragraph">
+<p>Basically, the agent can either be capable of remembering its RHQ-assigned
+ID or, when it&#8217;s not, the agent ID might be deduced on the server-side by
+hierarchy resolvers.</p>
+</div>
+<div class="paragraph">
+<p>If that fails, too, there should be a fallback option to manually map a new
+agent in the discovery queue to some other existing agent using our APIs.
+The discovered resources would be merged with the existing ones in some way
+or fashion.</p>
 </div>
 </div>
 <div class="sect2">
@@ -741,7 +773,7 @@ resources lived under <code>Pod1 Container2</code> resource if they so wished.</
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2014-11-04 18:13:33 CET
+Last updated 2014-11-05 22:02:30 CET
 </div>
 </div>
 </body>
