@@ -672,17 +672,20 @@ queue to look like this:</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="discovery-queue-4.png" alt="discovery queue 4" width="1837" height="343">
+<img src="discovery-queue-4.png" alt="discovery queue 4" width="1805" height="343">
 </div>
 </div>
 <div class="paragraph">
 <p>Notice that it was not able to realize what container the application
 managed by the <code>In-App Agent</code> runs in, because that information is not
 available in kubernetes (containers in a pod share IP address and (parts
-of) filesystem), but it was able to locate the agent and assign it ID of
-<code>pod1</code> so that it is IP-independent. The user could have the possibility to
-reorganize the the resource hierarchy even further by specifying that the 2
-resources lived under <code>Pod1 Container2</code> resource if they so wished.</p>
+of) filesystem), but it was able to figure out that the resources are part
+of the Pod1 resource based on the IP info from kubernetes. The user could
+have the possibility to reorganize the the resource hierarchy even further
+by specifying that the 2 resources lived under <code>Pod1 Container2</code> resource
+if they so wished. The ID of the agent remains unassigned though because
+there is no way of knowing what agent is reporting if there were more of
+them inside <code>Pod 1</code>.</p>
 </div>
 <div class="paragraph">
 <p>When the IP of the <code>Pod 1</code> changes again, we receive data from the <code>In-App
@@ -714,6 +717,95 @@ or fashion.</p>
 </div>
 <div class="sect2">
 <h3 id="_data_identity">Data Identity</h3>
+<div class="paragraph">
+<p>Currently in RHQ, resources are the primary entities with identity. Identity
+of other incoming data like measurements, configurations, etc. are derived
+from the identity of the resource.</p>
+</div>
+<div class="paragraph">
+<p>As I outlined in the
+<a href="https://docs.jboss.org/author/display/RHQ/Proposal+-+Poly-agent+RHQ">Poly-
+agent proposal</a>, I think that for us to enable agent-less monitoring (i.e.
+apps/scripts directly sending data), we need to be able to uniquely identify
+individual measurements, configurations, etc. This is to a) not impose too
+much responsibility for RHQ-specific identification on the senders and b) be
+able to compose ad-hoc resources in the server from data coming from agents.</p>
+</div>
+<div class="paragraph">
+<p>Technically we would probably still use a "dummy" resource even for agents
+that do not understand the concept of multiple resources per agent so that
+resourceAddress + datumID becomes a unique identifier of a piece of data.
+The resource address would probably be a combination of agentID<br>
+resourceAncestry where ancestry is just a "path" of agent-local resource
+identifiers.</p>
+</div>
+<div class="paragraph">
+<p>This arrangement would also enable us to consume data from other systems
+where the agentID would identify the other system and resourceAncestry and
+datumID would describe the "path" to the piece of data in that system. Maybe
+we could even encode the whole of that as an URI to not require multiple
+fields to identify the data.</p>
+</div>
+<div class="paragraph">
+<p><code>agent-type://agentName/resourceAddr/datumID</code></p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code><em>agent-type</em></code> - identifies the type of the agent (somewhat obviously).
+This can be used to keep track of what 3rd party system was used to obtain
+the information. Possible values would be <code>rhq</code>, <code>collectd</code>, <code>cadvisor</code>,
+etc.</p>
+<div class="paragraph">
+<p>Note that RHQ will usually not be able to determine this value but rather
+would have to be told (possibly by URL path it receives the data on) what
+the agent type is. This is because the type of the agent can be different
+than the format we received the data in (i.e. we can receive a datapoint as
+a graphite triplet, a json object, &#8230;&#8203; but that doesn&#8217;t tell us what system
+this value comes from).</p>
+</div>
+<div class="paragraph">
+<p>We need to distinguish different agent types because the <code>agentName</code>
+format/value will depend on it. It is possible that 2 types of agents have
+the same logical "name".</p>
+</div>
+</li>
+<li>
+<p><code><em>agentName</em></code> - The (possibly empty) name of the agent as established by
+the hierarchy resolver.</p>
+<div class="paragraph">
+<p>For example the collectd resolver will use the host part of the collectd
+identifier to get the host which then can be further analyzed by for
+example the kubernetes resolver to determine the name of the pod which is
+finally used as the agent name.</p>
+</div>
+</li>
+<li>
+<p><code><em>resourceAddr</em></code> - The possibly empty address of the resource in the
+hierarchy of resources <strong>as understood by the agent</strong>. Note that because of
+the support for composition of custom resources out of arbitrary data on
+the server side, this might be different from the (number of) resource
+addresses as known on the server.</p>
+</li>
+<li>
+<p><code><em>datumID</em></code> - This is the name of the data point. This the exact string
+sent up from the agent and hence it might encode information that is also
+present in other parts of the full data identifier (think about the
+collectd identifiers that always include the host in it). Also note that
+this ID might evolve in time (again think about collectd identifiers when
+the IP of the machine changes). It is up to RHQ to handle the linking of
+the changes (using versioning) using something similar as hierarchy
+resolvers described in the <a href="#_discovery_workflow">Discovery Workflow</a> chapter.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Given the description above, the full <code>agentID</code> referred to in the previous
+chapters would actually have a form <code>agent-type://agentName</code>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_data_types">Data Types</h3>
 <div class="paragraph">
 <p>TODO</p>
 </div>
@@ -770,10 +862,30 @@ or fashion.</p>
 </div>
 </div>
 </div>
+<div class="sect1">
+<h2 id="_apis">APIs</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>TODO</p>
+</div>
+<div class="sect2">
+<h3 id="_client_api">Client API</h3>
+<div class="paragraph">
+<p>TODO</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_agent_api">Agent API</h3>
+<div class="paragraph">
+<p>TODO</p>
+</div>
+</div>
+</div>
+</div>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2014-11-05 22:02:30 CET
+Last updated 2014-11-06 18:27:41 CET
 </div>
 </div>
 </body>
