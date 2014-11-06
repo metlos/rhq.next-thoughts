@@ -500,7 +500,7 @@ package "Platform Agent 2, ID = a2, IP = 1.2.3.3" {
     pa2Kachna -> pa2Postgres : childOf >
 }
 
-package "In-App Agent, ID = pod1, IP = 1.2.3.4" {
+package "In-App Agent, ID = ?, IP = 1.2.3.4" {
     object "Button" as iaBtn {
         ...
     }
@@ -551,10 +551,13 @@ iaPage -- pod1 : childOf >
 Notice that it was not able to realize what container the application 
 managed by the `In-App Agent` runs in, because that information is not 
 available in kubernetes (containers in a pod share IP address and (parts 
-of) filesystem), but it was able to locate the agent and assign it ID of 
-`pod1` so that it is IP-independent. The user could have the possibility to 
-reorganize the the resource hierarchy even further by specifying that the 2 
-resources lived under `Pod1 Container2` resource if they so wished.
+of) filesystem), but it was able to figure out that the resources are part 
+of the Pod1 resource based on the IP info from kubernetes. The user could 
+have the possibility to reorganize the the resource hierarchy even further 
+by specifying that the 2 resources lived under `Pod1 Container2` resource 
+if they so wished. The ID of the agent remains unassigned though because 
+there is no way of knowing what agent is reporting if there were more of 
+them inside `Pod 1`.
 
 When the IP of the `Pod 1` changes again, we receive data from the `In-App 
 Agent` from that different IP and because it doesn't know how to identify 
@@ -580,7 +583,78 @@ or fashion.
 
 === Data Identity
 
-TODO 
+Currently in RHQ, resources are the primary entities with identity. Identity 
+of other incoming data like measurements, configurations, etc. are derived 
+from the identity of the resource.
+
+As I outlined in the
+https://docs.jboss.org/author/display/RHQ/Proposal+-+Poly-agent+RHQ[Poly-
+agent proposal], I think that for us to enable agent-less monitoring (i.e. 
+apps/scripts directly sending data), we need to be able to uniquely identify 
+individual measurements, configurations, etc. This is to a) not impose too 
+much responsibility for RHQ-specific identification on the senders and b) be 
+able to compose ad-hoc resources in the server from data coming from agents.
+
+Technically we would probably still use a "dummy" resource even for agents 
+that do not understand the concept of multiple resources per agent so that 
+resourceAddress + datumID becomes a unique identifier of a piece of data. 
+The resource address would probably be a combination of agentID + 
+resourceAncestry where ancestry is just a "path" of agent-local resource 
+identifiers.
+
+This arrangement would also enable us to consume data from other systems 
+where the agentID would identify the other system and resourceAncestry and 
+datumID would describe the "path" to the piece of data in that system. Maybe 
+we could even encode the whole of that as an URI to not require multiple 
+fields to identify the data.
+
+`agent-type://agentName/resourceAddr/datumID`
+
+* `_agent-type_` - identifies the type of the agent (somewhat obviously). 
+This can be used to keep track of what 3rd party system was used to obtain 
+the information. Possible values would be `rhq`, `collectd`, `cadvisor`, 
+etc.
++
+Note that RHQ will usually not be able to determine this value but rather 
+would have to be told (possibly by URL path it receives the data on) what 
+the agent type is. This is because the type of the agent can be different 
+than the format we received the data in (i.e. we can receive a datapoint as 
+a graphite triplet, a json object, ... but that doesn't tell us what system 
+this value comes from).
++
+We need to distinguish different agent types because the `agentName` 
+format/value will depend on it. It is possible that 2 types of agents have 
+the same logical "name".
+
+* `_agentName_` - The (possibly empty) name of the agent as established by 
+the hierarchy resolver.
++
+For example the collectd resolver will use the host part of the collectd 
+identifier to get the host which then can be further analyzed by for 
+example the kubernetes resolver to determine the name of the pod which is 
+finally used as the agent name.
+
+* `_resourceAddr_` - The possibly empty address of the resource in the 
+hierarchy of resources *as understood by the agent*. Note that because of 
+the support for composition of custom resources out of arbitrary data on 
+the server side, this might be different from the (number of) resource 
+addresses as known on the server.
+
+* `_datumID_` - This is the name of the data point. This the exact string 
+sent up from the agent and hence it might encode information that is also 
+present in other parts of the full data identifier (think about the 
+collectd identifiers that always include the host in it). Also note that 
+this ID might evolve in time (again think about collectd identifiers when 
+the IP of the machine changes). It is up to RHQ to handle the linking of 
+the changes (using versioning) using something similar as hierarchy 
+resolvers described in the <<Discovery Workflow>> chapter.
+
+Given the description above, the full `agentID` referred to in the previous 
+chapters would actually have a form `agent-type://agentName`.
+
+=== Data Types
+
+TODO
 
 === What Data to Store?
 
@@ -611,5 +685,17 @@ TODO
 TODO
 
 === Kubernetes
+
+TODO
+
+== APIs
+
+TODO
+
+=== Client API
+
+TODO
+
+=== Agent API
 
 TODO
